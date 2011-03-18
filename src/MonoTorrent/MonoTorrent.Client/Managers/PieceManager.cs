@@ -129,8 +129,8 @@ namespace MonoTorrent.Client
 						    for (int i = 0; i < peers.Count; i++) {
 							    if (peers[i].Connection != null) {
 								    peers[i].Peer.HashedPiece(result);
-									if (peers [i].Peer.TotalHashFails == 5)
-										peers[i].ConnectionManager.CleanupSocket (id, "Too many hash fails");
+									if (peers [i].Peer.TotalHashFails >= 5)
+                                        peers[i].ConnectionManager.CleanupSocket(peers[i], "Too many hash fails");
 								}
 							}
 
