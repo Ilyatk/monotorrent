@@ -544,7 +544,7 @@ namespace MonoTorrent.Client
         void DownloadLogic(int counter)
         {
             // FIXME: Hardcoded 15kB/sec - is this ok?
-            if ((DateTime.Now - manager.StartTime) > TimeSpan.FromMinutes(1) && manager.Monitor.DownloadSpeed < 15 * 1024)
+            if ((DateTime.Now - manager.StartTime) > TimeSpan.FromSeconds(20))
             {
                 foreach (string s in manager.Torrent.GetRightHttpSeeds)
                 {
@@ -552,6 +552,21 @@ namespace MonoTorrent.Client
                     peerId = peerId + (webseedCount++).ToString().PadLeft(20 - peerId.Length, '0');
 
                     Uri uri = new Uri(s);
+                    // HACK: Don't want to add more than 10 same webseed (sometimes webseeds stuck)
+                    if (manager.Peers.ConnectedPeers.FindAll(p => p.Uri.Host.Equals(uri.Host)).Count > 9)
+                    {
+                        continue;
+                    }
+
+                    // Dont' want to add more than 2 same webseed if current webseeds is active (speed more than 5Kbs.
+                    if (manager.Peers.ConnectedPeers.FindAll(p => p.Uri.Host.Equals(uri.Host)
+                                                            && p.Monitor.DownloadSpeed > 5 * 1024
+                                                            ).Count > 1
+                        )
+                    {
+                        continue;
+                    }
+
                     Peer peer = new Peer(peerId, uri);
                     PeerId id = new PeerId(peer, manager);
                     HttpConnection connection = new HttpConnection(new Uri(s));
@@ -569,9 +584,6 @@ namespace MonoTorrent.Client
                     PeerIO.EnqueueReceiveMessage (id.Connection, id.Decryptor, Manager.DownloadLimiter, id.Monitor, id.TorrentManager, id.ConnectionManager.messageReceivedCallback, id);
                 }
 
-                // FIXME: In future, don't clear out this list. It may be useful to keep the list of HTTP seeds
-                // Add a boolean or something so that we don't add them twice.
-                manager.Torrent.GetRightHttpSeeds.Clear();
             }
 
             // Remove inactive peers we haven't heard from if we're downloading
